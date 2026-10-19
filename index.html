@@ -1,0 +1,1993 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>公司可迁移技能提升管理平台</title>
+<style>
+  :root{
+    --bg:#f6f3ee; --card:#fff; --ink:#2c2823; --muted:#8b8377;
+    --line:#e8e2d8; --accent:#c1662f; --accent2:#e0a56b;
+    --green:#2f9e6e; --red:#d9534f; --blue:#3b82c4;
+    --radius:16px;
+    --sidebar-w: 230px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--ink); -webkit-font-smoothing:antialiased;
+    line-height:1.55;
+  }
+  
+  /* ---------- 整体布局 ---------- */
+  .platform { display: flex; min-height: 100vh; }
+  
+  .sidebar-overlay {
+    display: none;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    z-index: 998; opacity: 0; transition: opacity 0.3s;
+  }
+  .sidebar-overlay.show { display: block; opacity: 1; }
+
+  .sidebar {
+    width: var(--sidebar-w); background: #fff; border-right: 1px solid var(--line);
+    position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto;
+    padding: 24px 16px; z-index: 999; display: flex; flex-direction: column;
+    transition: transform 0.3s ease;
+  }
+  .logo { font-size: 18px; font-weight: 700; color: var(--accent); margin-bottom: 24px; padding: 0 8px; letter-spacing: .5px; display: flex; align-items: center; gap: 8px;}
+  
+  .nav-menu { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .nav-item {
+    padding: 12px 14px; border-radius: 10px; cursor: pointer; color: var(--muted);
+    font-size: 14px; transition: all .2s; display: flex; align-items: center; gap: 10px;
+    user-select: none;
+  }
+  .nav-item:hover { background: #fdfbf7; color: var(--ink); }
+  .nav-item.active { background: var(--accent); color: #fff; font-weight: 600; }
+
+  .sidebar-footer {
+    margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line);
+    display: flex; justify-content: center;
+  }
+  .collapse-btn {
+    width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 10px;
+    background: #fdfcfa; color: var(--muted); font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: .15s;
+  }
+  .collapse-btn:hover { background: #f5f2eb; color: var(--ink); }
+
+  .main-content {
+    flex: 1; margin-left: var(--sidebar-w); padding: 26px 30px 70px;
+    max-width: 1200px; display: flex; flex-direction: column;
+    transition: margin-left 0.3s ease;
+  }
+
+  .mobile-menu-btn {
+    display: none;
+    position: fixed; bottom: 24px; right: 24px;
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--accent); color: #fff; font-size: 24px;
+    border: none; box-shadow: 0 4px 12px rgba(193, 102, 47, 0.4);
+    z-index: 1000; cursor: pointer;
+    align-items: center; justify-content: center;
+    transition: transform 0.2s;
+  }
+  .mobile-menu-btn:active { transform: scale(0.92); }
+
+  .expand-btn {
+    display: none;
+    width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line);
+    background: #fff; color: var(--ink); font-size: 18px; cursor: pointer;
+    align-items: center; justify-content: center; margin-right: 12px;
+  }
+  .expand-btn:hover { background: #fdfbf7; border-color: #d6ccbb; }
+
+  .sidebar.collapsed { transform: translateX(-100%); }
+  .main-content.collapsed { margin-left: 0; }
+  .main-content.collapsed .expand-btn { display: inline-flex; }
+
+  @media(max-width: 860px) {
+    .sidebar { transform: translateX(-100%); width: 250px; box-shadow: 2px 0 8px rgba(0,0,0,0.1); }
+    .sidebar.show { transform: translateX(0); }
+    .sidebar-footer { display: none; }
+    .main-content { margin-left: 0 !important; padding: 20px 16px 90px; }
+    .mobile-menu-btn { display: flex; }
+    .expand-btn { display: none !important; }
+    .top-left { display: flex; align-items: center; }
+  }
+
+  /* ---------- 顶部工具栏 ---------- */
+  .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .top-left { display: flex; align-items: center; gap: 8px;}
+  .top-left h1 { font-size: 22px; margin: 0; letter-spacing: .5px; }
+  .top-left .sub { margin: 0; color: var(--muted); font-size: 13px; margin-top: 4px;}
+  .today { font-size: 13px; color: var(--muted); margin-bottom: 8px; text-align: right;}
+
+  button { font-family: inherit; }
+  .btn, .ghost {
+    padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line);
+    background: #fff; color: var(--ink); cursor: pointer; font-size: 13px;
+    transition: .15s; white-space: nowrap;
+  }
+  .btn:hover, .ghost:hover { border-color: #d6ccbb; background: #fdfbf7; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+  .btn.primary:hover { background: #a9551f; }
+  .btn.danger { color: var(--red); }
+  .btn.danger:hover { background: #fdf0ef; border-color: #f0c9c7; }
+  .btn.tiny { padding: 5px 10px; font-size: 12px; border-radius: 8px; }
+
+  /* ---------- 面板 ---------- */
+  .panel { display: none; animation: fade .25s ease; flex: 1; }
+  .panel.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- 卡片 ---------- */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 15.5px; margin: 0 0 16px; display: flex; align-items: center; gap: 8px; }
+  .card h2 .cnt { font-size: 12px; color: var(--muted); font-weight: 400; }
+
+  /* ---------- 表单 ---------- */
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; }
+  .field label .req { color: var(--red); margin-left: 2px; }
+  input[type=text], input[type=number], input[type=date], select, textarea {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px;
+    font-size: 13.5px; font-family: inherit; background: #fdfcfa; color: var(--ink); outline: none; transition: .15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent2); background: #fff; box-shadow: 0 0 0 3px rgba(224,165,107,.15); }
+  textarea { resize: vertical; min-height: 64px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media(max-width: 640px) { .row { grid-template-columns: 1fr; } }
+
+  /* ---------- 下拉多选 ---------- */
+  .multi-select { position: relative; border: 1px solid var(--line); border-radius: 10px; background: #fdfcfa; }
+  .ms-trigger { padding: 9px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; color: var(--ink); }
+  .ms-trigger::after { content: '▼'; font-size: 10px; color: var(--muted); }
+  .ms-menu { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid var(--line); border-radius: 10px; z-index: 10; max-height: 260px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-top: 4px; }
+  .ms-menu.show { display: block; }
+  .ms-item { padding: 9px 12px; display: flex; align-items: flex-start; gap: 9px; cursor: pointer; border-bottom: 1px solid #f5f2eb; font-size: 13px; }
+  .ms-item:hover { background: #fdfbf7; }
+  .ms-item input[type=checkbox] { margin-top: 3px; accent-color: var(--accent); cursor: pointer; }
+  .ms-item .eg { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ---------- 目标卡片 ---------- */
+  .goal { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 12px; transition: .18s; }
+  .goal:hover { border-color: #e0d6c6; box-shadow: 0 4px 16px rgba(120,100,70,.06); }
+  .goal.finished { background: #fbfdfa; border-color: #d9ecdf; }
+  .goal-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+  .goal-title { font-size: 15px; font-weight: 600; margin: 6px 0 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .goal.finished .goal-title { color: var(--green); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; color: #fff; font-weight: 500; letter-spacing: .3px; }
+  .goal-meta { font-size: 12.5px; color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-top: 10px;}
+  .goal-meta b { color: var(--ink); font-weight: 600; }
+  .goal-qa { font-size: 13px; color: #5c554b; margin-top: 10px; line-height: 1.6; background: #fdfcfa; padding: 10px 14px; border-radius: 10px; border: 1px dashed var(--line);}
+  .goal-qa p { margin: 0 0 6px 0; }
+  .goal-qa p:last-child { margin: 0; }
+  .goal-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
+
+  /* ---------- 今日记录（折叠面板） ---------- */
+  .log-group { border: 1px solid var(--line); border-radius: 12px; margin-bottom: 12px; background: #fff; overflow: hidden; }
+  .log-group-head {
+    padding: 14px 16px; background: #fdfcfa; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+    font-size: 14px; font-weight: 600; transition: background 0.2s; user-select: none;
+  }
+  .log-group-head:hover { background: #f5f2eb; }
+  .log-group-head .arrow { transition: transform 0.2s; font-size: 12px; color: var(--muted); }
+  .log-group.open .log-group-head .arrow { transform: rotate(90deg); }
+  .log-group-body { display: none; padding: 0 16px; border-top: 1px solid var(--line); }
+  .log-group.open .log-group-body { display: block; }
+  
+  .logitem { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px dashed var(--line); align-items: flex-start; }
+  .logitem:last-child { border-bottom: none; }
+  .logitem .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-top: 7px; flex: 0 0 auto; }
+  .logitem .body { flex: 1; min-width: 0; }
+  .logitem .t { font-size: 13.5px; font-weight: 600; margin-bottom: 4px; }
+  .logitem .t .time { font-size: 11.5px; font-weight: 500; color: #fff; background: #b9ae9c; padding: 2px 8px; border-radius: 999px; margin-left: 8px; letter-spacing: .4px; }
+  .logitem .m { font-size: 12.5px; color: var(--ink); margin-top: 4px; word-break: break-word; line-height: 1.6;}
+  .logitem .m span { color: var(--muted); font-weight: 600; margin-right: 4px;}
+  .logitem .ops { display: flex; gap: 6px; flex: 0 0 auto; align-self: center; }
+  .tagline { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .tagline span { font-size: 11px; background: #f2ece3; color: #7d7261; padding: 2px 8px; border-radius: 999px; }
+
+  /* ---------- 复习 ---------- */
+  .rev-group { margin-bottom: 18px; }
+  .rev-group h3 { font-size: 13px; color: var(--muted); margin: 0 0 10px; font-weight: 600; letter-spacing: .5px; }
+  .rev { display: flex; justify-content: space-between; gap: 12px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px; margin-bottom: 8px; flex-wrap: wrap; }
+  .rev.over { border-color: #f0c9c7; background: #fffafa; }
+  .rev.today { border-color: #f2ddc8; background: #fffaf4; }
+  .rev .txt { font-size: 13.5px; font-weight: 600; }
+  .rev .sub2 { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .rev .stage { font-size: 11px; background: #eef4fb; color: #3b82c4; padding: 2px 8px; border-radius: 999px; margin-left: 8px; }
+  .rev .stage.hot { background: #fdf0ef; color: var(--red); }
+
+  /* ---------- 周计划 ---------- */
+  .week-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .week-nav .range { font-size: 14px; font-weight: 600; }
+  .plan-item { display: flex; align-items: flex-start; gap: 10px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 11px; margin-bottom: 8px; background: #fdfcfa; }
+  .plan-item.done { background: #f7fbf8; border-color: #dcece2; }
+  .plan-item.done .ptext { text-decoration: line-through; color: var(--muted); }
+  .plan-item input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; flex: 0 0 auto; margin-top: 3px; }
+  .plan-item .ptext { flex: 1; font-size: 13.5px; min-width: 0; word-break: break-word; }
+  .plan-item .ptext .link { font-size: 11.5px; color: var(--muted); margin-top: 5px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;}
+  .plan-item .ops { display: flex; gap: 4px; flex: 0 0 auto; margin-top: 2px; }
+  
+  .plan-progress { font-size: 11.5px; color: var(--blue); background: #eef4fb; padding: 1px 6px; border-radius: 4px; }
+  .plan-time { font-size: 11.5px; color: var(--accent); background: #fdf1e7; padding: 1px 6px; border-radius: 4px; }
+
+  /* ---------- 图表 ---------- */
+  .chart-container { display: flex; align-items: flex-end; gap: 12px; height: 160px; padding: 10px 0; border-bottom: 1px solid var(--line); margin-bottom: 20px; overflow-x: auto;}
+  .chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 24px;}
+  .chart-val { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .chart-bar-wrap { flex: 1; width: 100%; max-width: 36px; display: flex; align-items: flex-end; justify-content: center; background: #f7f4ef; border-radius: 4px 4px 0 0; overflow: hidden; }
+  .chart-bar { width: 100%; background: var(--accent2); border-radius: 4px 4px 0 0; transition: height .4s; min-height: 2px;}
+  .chart-col:hover .chart-bar { background: var(--accent); }
+  .chart-label { font-size: 11px; color: var(--muted); margin-top: 6px; white-space: nowrap;}
+
+  /* ---------- 看板子视图 ---------- */
+  .sub-tabs { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--line); padding-bottom: 10px; flex-wrap: wrap;}
+  .sub-tabs button { border: 1px solid var(--line); background: #fff; padding: 6px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; color: var(--muted); transition: .15s;}
+  .sub-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600;}
+
+  /* ---------- 空状态 ---------- */
+  .empty { text-align: center; color: var(--muted); font-size: 13px; padding: 32px 12px; border: 1px dashed var(--line); border-radius: 14px; background: #fdfcfa; }
+
+  /* ---------- 弹窗 ---------- */
+  .mask { position: fixed; inset: 0; background: rgba(40,32,24,.45); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 1001; backdrop-filter: blur(2px); }
+  .mask.show { display: flex; }
+  .modal { background: #fff; border-radius: 18px; padding: 22px; width: 100%; max-width: 490px; max-height: 90vh; overflow: auto; }
+  .modal h3 { margin: 0 0 16px; font-size: 16px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+  /* ---------- Toast ---------- */
+  #toast { position: fixed; left: 50%; bottom: 36px; transform: translateX(-50%) translateY(20px); background: #2c2823; color: #fff; padding: 11px 20px; border-radius: 999px; font-size: 13px; opacity: 0; pointer-events: none; transition: .3s; z-index: 1002; max-width: 90vw; text-align: center; }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .summary-stat { display: flex; gap: 24px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+  .summary-stat b { font-size: 16px; color: var(--ink); }
+
+  .mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+  @media(max-width:760px){.mgrid{grid-template-columns:1fr;}}
+  .mcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;}
+  .mcard .h{display:flex;align-items:center;gap:9px;font-size:14.5px;font-weight:700;margin-bottom:6px;}
+  .mcard .h .ico{font-size:19px;}
+  .mcard .k{font-size:12px;color:var(--accent);font-weight:600;margin-bottom:8px;}
+  .mcard ul{margin:0;padding-left:17px;font-size:12.8px;color:#5c554b;line-height:1.75;}
+  .mcard .foot{margin-top:10px;font-size:12px;color:var(--muted);border-top:1px dashed var(--line);padding-top:9px;}
+  
+  footer { margin-top: 36px; text-align: center; font-size: 12px; color: #b3aa9c; line-height: 1.9; }
+  footer .q { font-size: 13px; color: #8b8377; }
+</style>
+</head>
+<body>
+
+<div class="platform">
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="logo">🚀 技能提升平台</div>
+    <nav class="nav-menu" id="navMenu">
+      <div class="nav-item active" data-tab="goals">🎯 学习目标</div>
+      <div class="nav-item" data-tab="week">📅 本周计划</div>
+      <div class="nav-item" data-tab="today">✅ 今日打卡</div>
+      <div class="nav-item" data-tab="review">🔁 抗遗忘回顾</div>
+      <div class="nav-item" data-tab="week-summary">📝 本周总结</div>
+      <div class="nav-item" data-tab="month">📆 月度总结</div>
+      <div class="nav-item" data-tab="year">📈 年度总结</div>
+      <div class="nav-item" data-tab="board">📊 看板</div>
+      <div class="nav-item" data-tab="method">🧠 记忆方法</div>
+      <div class="nav-item" data-tab="mine">👤 我的</div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="collapse-btn" id="collapseBtn">
+        <span>↤</span> 收起侧栏
+      </button>
+    </div>
+  </aside>
+
+  <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
+
+  <main class="main-content" id="mainContent">
+    <header class="top">
+      <div class="top-left">
+        <button class="expand-btn" id="expandBtn" title="展开侧栏">☰</button>
+        <div>
+          <h1>公司可迁移技能提升管理平台</h1>
+          <p class="sub">有终点 · 有总量 · 每天积累一点点可迁移的能力</p>
+        </div>
+      </div>
+      <div class="top-right">
+        <div class="today" id="todayLabel"></div>
+      </div>
+    </header>
+
+    <!-- 页面 1: 学习目标 -->
+    <section class="panel active" id="tab-goals">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+        <div style="font-size:13px;color:var(--muted);">目标进度由本周计划（子任务）自动计算得出</div>
+        <button class="btn primary" id="btnAddGoal">＋ 新增学习目标</button>
+      </div>
+      <div id="goalList"></div>
+    </section>
+
+    <!-- 页面 2: 本周计划 -->
+    <section class="panel" id="tab-week">
+      <div class="card">
+        <div class="week-nav">
+          <button class="ghost tiny" id="weekPrev">← 上一周</button>
+          <div class="range" id="weekRange"></div>
+          <button class="ghost tiny" id="weekNext">下一周 →</button>
+          <button class="ghost tiny" id="weekNow">回到本周</button>
+        </div>
+        <div class="row" style="grid-template-columns: 1fr 1fr;">
+          <div class="field" style="margin:0;">
+            <label>关联学习目标</label>
+            <select id="planGoal"></select>
+          </div>
+          <div class="field" style="margin:0;">
+            <label>学习维度</label>
+            <select id="planDim"></select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px; grid-template-columns: 2fr 1fr 1fr;">
+          <div class="field" style="margin:0;">
+            <label>本周要学什么（具体任务）</label>
+            <input type="text" id="planText" placeholder="例：看完 IL-FFM 子系统设计说明书 第 3 章" />
+          </div>
+          <div class="field" style="margin:0;">
+            <label>占比</label>
+            <input type="number" id="planTotal" value="1" min="1" />
+          </div>
+          <div class="field" style="margin:0;">
+            <label>单位</label>
+            <input type="text" id="planUnit" value="" placeholder="可不填" />
+          </div>
+        </div>
+        <button class="btn primary" id="btnAddPlan" style="width:100%;margin-top:12px;">添加到本周清单</button>
+      </div>
+      <div class="card">
+        <h2>📋 本周清单 <span class="cnt" id="planCnt"></span></h2>
+        <div id="planList"></div>
+      </div>
+    </section>
+
+    <!-- 页面 3: 今日打卡 -->
+    <section class="panel" id="tab-today">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+        <div style="font-size:13px;color:var(--muted);">记录今天的学习进度和收获（支持对历史记录编辑、删除）</div>
+        <button class="btn primary" onclick="switchTab('week')">📅 查看本周计划</button>
+      </div>
+      <div class="card">
+        <h2>✅ 今日打卡 <span class="cnt" id="todayCnt"></span></h2>
+
+        <div class="field">
+          <label>关联本周清单 <span class="req">*</span></label>
+          <select id="logPlan"></select>
+        </div>
+
+        <div class="field">
+          <label>记忆力训练方法</label>
+          <div class="multi-select" id="logChecks">
+            <div class="ms-trigger">点击选择今日完成的训练</div>
+            <div class="ms-menu"></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>今日进展（必填）<span class="req">*</span></label>
+          <input type="text" id="logProgress" placeholder="例：看完了第3章的电源树设计部分" />
+        </div>
+
+        <div class="field">
+          <label>主动回顾（选填，合上资料能想起什么）</label>
+          <textarea id="logRecall" placeholder="例：电源树的上电时序是...（用自己话简述）"></textarea>
+        </div>
+
+        <div class="field">
+          <label>输出总结（选填，写给自己或团队的备忘）</label>
+          <textarea id="logSummary" placeholder="例：需要明天找硬件确认浪涌抑制电路的设计规范"></textarea>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>本次完成进度 <span class="req">*</span></label>
+            <div style="display:flex; gap:8px;">
+              <input type="number" id="logAmount" value="1" min="0.1" step="1" style="flex:1;" />
+              <input type="text" id="logUnit" value="" placeholder="可不填" style="width:90px;" />
+            </div>
+          </div>
+          <div class="field">
+            <label>用时（分钟）</label>
+            <input type="number" id="logMinutes" value="30" min="1" />
+          </div>
+        </div>
+
+        <button class="btn primary" id="btnLog" style="width:100%;padding:11px;">今日打卡</button>
+      </div>
+
+      <div class="card">
+        <h2>📌 今日记录 <span class="cnt">按目标折叠展示</span></h2>
+        <div id="todayLogs"></div>
+      </div>
+    </section>
+
+    <!-- 页面 4: 抗遗忘回顾 -->
+    <section class="panel" id="tab-review">
+      <div class="card" style="background:linear-gradient(90deg,#fff8f2,#fffdfb);border-color:#f2ddc8;">
+        <div style="font-size:13px;color:#7d7261;line-height:1.9;">
+          <b>根据艾宾浩斯遗忘曲线，只显示当前已经到期的复习任务，做完一项清一项。</b><br>
+          请使用「复述」的方式重新巩固记忆：合上资料，用自己的话把内容讲一遍，讲得出来才算真正掌握。
+        </div>
+      </div>
+      <div id="reviewBox"></div>
+    </section>
+
+    <!-- 页面 5: 本周总结 -->
+    <section class="panel" id="tab-week-summary">
+      <div class="card">
+        <h2 id="weekSummaryTitle">📝 本周总结</h2>
+        <div class="summary-stat" id="weekSummaryStats"></div>
+        <div class="chart-container" id="weekSummaryChart" style="height: 160px;"></div>
+        <div class="field">
+          <label>手写本周总结（学到了什么、解决了什么问题、下周计划）</label>
+          <textarea id="weekSummaryText" placeholder="例：这周把FFM单板的电源树彻底搞懂了，输出了3页笔记，下周准备推进时钟和复位部分……" style="min-height:120px;"></textarea>
+        </div>
+        <button class="btn primary" id="btnSaveWeekSummary" style="width:100%;">保存本周总结</button>
+      </div>
+    </section>
+
+    <!-- 页面 6: 月度总结 -->
+    <section class="panel" id="tab-month">
+      <div class="card">
+        <h2 id="monthTitle">📆 月度总结</h2>
+        <div class="summary-stat" id="monthStats"></div>
+        <div class="chart-container" id="monthChart" style="height: 160px;"></div>
+        <div class="field">
+          <label>手写本月总结（学到了什么、解决了什么问题、下月计划）</label>
+          <textarea id="monthSummaryText" placeholder="例：这个月把 FFM 单板的电源树彻底搞懂了，输出了 3 页笔记，下个月准备推进时钟和复位部分……" style="min-height:120px;"></textarea>
+        </div>
+        <button class="btn primary" id="btnSaveMonth" style="width:100%;">保存月度总结</button>
+      </div>
+    </section>
+
+    <!-- 页面 7: 年度总结 -->
+    <section class="panel" id="tab-year">
+      <div class="card">
+        <h2 id="yearTitle">📈 年度总结</h2>
+        <div class="summary-stat" id="yearStats"></div>
+        <div class="chart-container" id="yearChart" style="height: 160px;"></div>
+        <div class="field">
+          <label>手写年度总结（能力成长、关键突破、明年计划）</label>
+          <textarea id="yearSummaryText" placeholder="例：今年完成了从原理图到 PCB 的全流程学习，真正能独立承担单板设计任务了……" style="min-height:120px;"></textarea>
+        </div>
+        <button class="btn primary" id="btnSaveYear" style="width:100%;">保存年度总结</button>
+      </div>
+    </section>
+
+    <!-- 页面 8: 看板 -->
+    <section class="panel" id="tab-board">
+      <div class="sub-tabs" id="boardSubTabs">
+        <button data-view="day" class="active">日视图</button>
+        <button data-view="week">周视图</button>
+        <button data-view="month">月视图</button>
+        <button data-view="year">年视图</button>
+      </div>
+      <div class="board-content" id="boardContent"></div>
+    </section>
+
+    <!-- 页面 9: 记忆方法 -->
+    <section class="panel" id="tab-method">
+      <div class="mgrid" id="methodGrid"></div>
+    </section>
+
+    <!-- 页面 10: 我的 -->
+    <section class="panel" id="tab-mine">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+        <div style="font-size:13px;color:var(--muted);">数据管理与平台指南</div>
+        <div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="ghost" id="btnExport">导出备份</button>
+          <button class="ghost" id="btnImport">导入</button>
+          <button class="ghost" id="btnClear" style="color:var(--red);">清除历史数据</button>
+          <input type="file" id="fileInput" accept=".json" hidden />
+        </div>
+      </div>
+      <div class="card">
+        <h2>👤 平台使用指南</h2>
+        <div style="font-size:14px; color:#5c554b; line-height:1.9;">
+          <p><b>1. 学习目标：</b>建立有终点的学习目标，目标进度会根据其下挂的「本周计划」完成量自动计算。</p>
+          <p><b>2. 本周计划：</b>每周初拆解大目标成“本周清单”，每项清单需设置“学习维度”、“占比”和“单位”。清单勾选完成后会自动生成抗遗忘复习节点。</p>
+          <p><b>3. 今日打卡：</b>每天学完，针对具体的“本周清单”进行打卡，填写进展（必填）、主动回顾、输出总结，系统会自动累加清单的完成量和用时。</p>
+          <p><b>4. 抗遗忘回顾：</b>系统根据艾宾浩斯遗忘曲线，只显示当前已经到期的复习任务。使用「复述」法：合上资料，用自己的话讲一遍，做完一项清一项。</p>
+          <p><b>5. 本周总结 / 月度总结 / 年度总结：</b>阶段性回看数据与趋势，并手写总结沉淀。这些总结会保存在本地。</p>
+          <p><b>6. 看板：</b>以日、周、月、年四个视图，多维度查看你的学习投入趋势和打卡记录。</p>
+          <p><b>7. 记忆方法：</b>汇总了图片中提到的 8 大科学记忆法，随时复习。</p>
+          <p style="margin-top:14px; font-size:12px; color:var(--muted); border-top:1px dashed var(--line); padding-top:12px;">所有数据保存在本机浏览器中，建议定期导出备份。</p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="q">「真正的过目不忘，是把看到的世界，变成自己思考和创造的力量。」</div>
+      <div style="margin-top:6px;">利用公司资源和时间，每天积累一点点可迁移的能力</div>
+    </footer>
+  </main>
+</div>
+
+<div class="mask" id="mask">
+  <div class="modal" id="modalBox"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* =========================================================
+   侧边栏折叠与抽屉逻辑
+   ========================================================= */
+const sidebar = document.getElementById('sidebar');
+const mainContent = document.getElementById('mainContent');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
+const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+const collapseBtn = document.getElementById('collapseBtn');
+const expandBtn = document.getElementById('expandBtn');
+
+function toggleMobileMenu() {
+  sidebar.classList.toggle('show');
+  sidebarOverlay.classList.toggle('show');
+}
+mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+sidebarOverlay.addEventListener('click', toggleMobileMenu);
+
+collapseBtn.addEventListener('click', () => {
+  sidebar.classList.add('collapsed');
+  mainContent.classList.add('collapsed');
+});
+
+expandBtn.addEventListener('click', () => {
+  sidebar.classList.remove('collapsed');
+  mainContent.classList.remove('collapsed');
+});
+
+document.getElementById('navMenu').addEventListener('click', e => {
+  const b = e.target.closest('.nav-item');
+  if(b) {
+    switchTab(b.dataset.tab);
+    if(window.innerWidth <= 860 && sidebar.classList.contains('show')) {
+      toggleMobileMenu();
+    }
+  }
+});
+
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 860) {
+    sidebar.classList.remove('show');
+    sidebarOverlay.classList.remove('show');
+  } else {
+    sidebar.classList.remove('collapsed');
+    mainContent.classList.remove('collapsed');
+  }
+});
+
+
+/* =========================================================
+   基础配置
+   ========================================================= */
+const DIMS = [
+  {id:'sch',    name:'原理图设计',      color:'#d97b34'},
+  {id:'pcb',    name:'PCB设计',         color:'#3b82c4'},
+  {id:'ssd',    name:'子系统设计说明书', color:'#7c6bd6'},
+  {id:'fbd',    name:'FBD图',           color:'#2f9e6e'},
+  {id:'xxxt',   name:'芯光学堂',        color:'#d9534f'},
+  {id:'cpld',   name:'CPLD',            color:'#c9903a'},
+  {id:'fpga',   name:'FPGA',            color:'#b1478c'},
+  {id:'plc',    name:'PLC',             color:'#6b8e23'},
+  {id:'mcu',    name:'MCU',             color:'#2c8c9e'},
+  {id:'python', name:'Python',          color:'#d97b34'},
+  {id:'test',   name:'测试考试资料',    color:'#b1478c'},
+  {id:'group',  name:'个人群空间',      color:'#8a6d3b'},
+  {id:'dbox',   name:'DBOX',            color:'#4a6fa5'},
+  {id:'team',   name:'团队群空间',      color:'#8b8377'},
+  {id:'other',  name:'其它等',          color:'#b9ae9c'}
+];
+
+const DAILY_CHECKS = [
+  {id:'deep30',  text:'每天保持 30 分钟深度专注学习', eg:'关闭消息通知，用番茄钟 25+5 分钟'},
+  {id:'restate', text:'每次学习后，用自己的话复述一遍', eg:'学完一个知识点，合上资料讲一遍'},
+  {id:'mindmap', text:'用思维导图建立知识框架', eg:'把今天的内容画成一张树状图'},
+  {id:'recall',  text:'每周至少做一次主动回忆和自测', eg:'周末不看书，凭记忆写下周学了什么'},
+  {id:'spaced',  text:'对重要内容，按照遗忘曲线定期复习', eg:'今天学的，明天、后天、下周各看一次'},
+  {id:'apply',   text:'在工作和生活中主动应用所学知识', eg:'用新学的原理图规范检查现有项目'},
+  {id:'habit',   text:'坚持至少 21 天，让记忆成为习惯', eg:'每天固定时间打卡，不中断'}
+];
+
+const METHOD_DETAIL = [
+  {icon:'🎯',name:'先专注',key:'给大脑打开“记忆开关”',
+   list:['一次只做一件事','减少手机干扰','刻意训练专注力（如番茄钟）'],
+   foot:'只有当你真正专注时，信息才会进入大脑的“长期仓库”。'},
+  {icon:'🧩',name:'懂原理',key:'理解比死记更有效',
+   list:['先搞清核心概念和底层逻辑','用自己的话重新解释','建立知识的因果关系和结构框架'],
+   foot:'大脑喜欢有意义的信息，理解越深，记得越牢。'},
+  {icon:'🔗',name:'建关联',key:'把新信息挂在旧知识上',
+   list:['把新知识与已有经验、工作场景联系起来','用类比、故事、画面等方式增强记忆','构建自己的知识网络（如思维导图）'],
+   foot:'信息不是孤立的，越多关联，越不容易遗忘。'},
+  {icon:'🖼️',name:'用图像',key:'让大脑记住画面而不是文字',
+   list:['把抽象信息转化为具体画面','用夸张、鲜明、奇特的图像','善用空间记忆法（如记忆宫殿）'],
+   foot:'越生动、越夸张、越奇特的画面，越容易被大脑记住。'},
+  {icon:'👁️',name:'多感官',key:'调动更多感官一起记',
+   list:['边看、边听、边说、边写','尝试手写笔记，而不是只看屏幕','用语音复述，或教给别人'],
+   foot:'动用的感官越多，大脑留下的痕迹就越深。'},
+  {icon:'🔁',name:'主动回忆',key:'想起来比再看一遍更重要',
+   list:['看完后，合上书本自己回想','用问题的方式检验自己（如费曼提问）','定期自测，刻意回忆关键内容'],
+   foot:'每一次主动回忆，都是一次强化记忆的过程。'},
+  {icon:'📈',name:'分散复习',key:'在遗忘曲线前抢回记忆',
+   list:['遵循“艾宾浩斯遗忘曲线”安排复习','在 1 天、3 天、1 周、1 月等时间点回顾','每次复习时间不用长，但要高频次'],
+   foot:'及时的、重复的回顾，能把短期记忆转化为长期记忆。'},
+  {icon:'📤',name:'用输出',key:'在应用中真正掌握',
+   list:['尝试用所学知识解决实际问题','写下自己的总结和观点','在工作、生活中刻意应用','分享给别人，在交流中加深记忆'],
+   foot:'知识只有被使用，才会真正成为你的能力。'}
+];
+
+const REVIEW_STAGES = [1, 3, 7, 30];
+const KEY = 'study_board_v7';
+
+/* =========================================================
+   工具函数
+   ========================================================= */
+function uid(){ return Math.random().toString(36).slice(2,9) + Date.now().toString(36); }
+function pad(n){ return String(n).padStart(2,'0'); }
+function fmt(d){ return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+function todayStr(){ return fmt(new Date()); }
+function addDays(dateStr, n){
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return fmt(d);
+}
+function parseD(s){ return new Date(s + 'T00:00:00'); }
+function fmtTime(ts){
+  const d = new Date(ts);
+  return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+}
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
+  ));
+}
+function getDim(id){ return DIMS.find(d => d.id === id) || DIMS[DIMS.length-1]; }
+function daysBetween(a,b){ return Math.round((parseD(b) - parseD(a)) / 86400000); }
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._tm);
+  t._tm = setTimeout(() => t.classList.remove('show'), 2400);
+}
+function weekKey(offset){
+  offset = offset || 0;
+  const d = new Date();
+  const wd = (d.getDay() + 6) % 7;      // 周一 = 0
+  d.setDate(d.getDate() - wd + offset * 7);
+  return fmt(d);
+}
+
+/* =========================================================
+   状态管理
+   ========================================================= */
+function defaultState(){
+  const t = todayStr();
+  return {
+    goals: [
+      {
+        id: uid(),
+        title: '学习完 IL-FFM 单板原理图设计',
+        obstacle: '资料太多，没有重点；时间碎片化严重。',
+        solution: '先看目录和总结；每天固定 30 分钟番茄钟；利用平台的抗遗忘回顾功能。',
+        createdAt: t
+      },
+      {
+        id: uid(),
+        title: '看完 IL-FFM 子系统设计说明书',
+        obstacle: '容易忘记之前看过的内容；专业术语多。',
+        solution: '每看完一章写总结；遇到不懂的立刻查资料并在群里提问。',
+        createdAt: t
+      }
+    ],
+    logs: [],
+    weekPlans: {},
+    weekSummaries: {},
+    monthSummaries: {},
+    yearSummaries: {},
+    weekOffset: 0
+  };
+}
+
+let state;
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(raw){
+      const s = JSON.parse(raw);
+      if(s && Array.isArray(s.goals)){
+        s.logs = s.logs || [];
+        s.weekPlans = s.weekPlans || {};
+        s.weekSummaries = s.weekSummaries || {};
+        s.monthSummaries = s.monthSummaries || {};
+        s.yearSummaries = s.yearSummaries || {};
+        s.weekOffset = s.weekOffset || 0;
+        return s;
+      }
+    }
+  }catch(e){ /* 忽略 */ }
+  return defaultState();
+}
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+}
+
+/* =========================================================
+   核心业务逻辑
+   ========================================================= */
+function createLog(opts){
+  const now = new Date();
+  const log = {
+    id: uid(),
+    planId: opts.planId || '',
+    goalId: opts.goalId || '',
+    ts: now.getTime(),
+    date: fmt(now),
+    amount: opts.amount || 1,
+    unit: opts.unit || '',
+    minutes: opts.minutes || 0,
+    checks: opts.checks || [],
+    progress: opts.progress || '',
+    recall: opts.recall || '',
+    summary: opts.summary || ''
+  };
+  state.logs.push(log);
+  return log;
+}
+
+function goalTitle(id){
+  const g = state.goals.find(x => x.id === id);
+  return g ? g.title : '（目标已删除）';
+}
+
+function planTextOf(planId){
+  for(const wk in state.weekPlans){
+    const p = state.weekPlans[wk].find(x => x.id === planId);
+    if(p) return p.text;
+  }
+  return '（清单已删除）';
+}
+
+function planObjOf(planId){
+  for(const wk in state.weekPlans){
+    const p = state.weekPlans[wk].find(x => x.id === planId);
+    if(p) return p;
+  }
+  return null;
+}
+
+function calcGoalProgress(goalId){
+  let total = 0;
+  let done = 0;
+  Object.keys(state.weekPlans).forEach(wk => {
+    state.weekPlans[wk].forEach(p => {
+      if(p.goalId === goalId) {
+        total += Number(p.total) || 1;
+        done += Number(p.done) || 0;
+      }
+    });
+  });
+  return { total, done, pct: total > 0 ? Math.min(100, Math.round(done/total*100)) : 0 };
+}
+
+function getAllReviews(){
+  const list = [];
+  Object.keys(state.weekPlans).forEach(wk => {
+    (state.weekPlans[wk] || []).forEach(p => {
+      if(p.reviews && p.reviews.length){
+        p.reviews.forEach((r, idx) => {
+          if(!r.done){
+            list.push({
+              wk, planId: p.id, planText: p.text, goalId: p.goalId,
+              idx, stage: r.stage, due: r.due, done: r.done
+            });
+          }
+        });
+      }
+    });
+  });
+  return list;
+}
+
+/* =========================================================
+   渲染：学习目标
+   ========================================================= */
+function renderGoals(){
+  const wrap = document.getElementById('goalList');
+  if(!state.goals.length){
+    wrap.innerHTML = `<div class="empty">还没有学习目标<br><br>点右上角「＋ 新增学习目标」开始。</div>`;
+    return;
+  }
+
+  const list = [...state.goals].sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''));
+
+  wrap.innerHTML = list.map(g => {
+    const prog = calcGoalProgress(g.id);
+    const fin = prog.total > 0 && prog.done >= prog.total;
+
+    let qaHtml = '';
+    if(g.obstacle || g.solution) {
+      qaHtml = `
+        <div class="goal-qa">
+          ${g.obstacle ? `<p><b>Q: 遇到哪些障碍或困难？</b><br>${esc(g.obstacle)}</p>` : ''}
+          ${g.solution ? `<p><b>A: 采用何种方式应对？</b><br>${esc(g.solution)}</p>` : ''}
+        </div>
+      `;
+    }
+
+    return `
+      <div class="goal ${fin?'finished':''}" data-id="${g.id}">
+        <div class="goal-head">
+          <div style="flex:1;min-width:200px;">
+            <div class="goal-title">${esc(g.title)} ${fin?'<span style="color:var(--green);font-size:13px;">✓ 已完成</span>':''}</div>
+          </div>
+        </div>
+        ${qaHtml}
+        <div class="goal-meta">
+          <span>已完成 <b>${prog.done}</b> / ${prog.total} 占比 (${prog.pct}%)</span>
+        </div>
+        <div class="goal-actions">
+          <button class="btn tiny" data-act="edit">编辑目标</button>
+          <button class="btn tiny danger" data-act="del">删除</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* =========================================================
+   渲染：本周计划
+   ========================================================= */
+function fillPlanSelectors(){
+  const selGoal = document.getElementById('planGoal');
+  const selDim = document.getElementById('planDim');
+  
+  const curGoal = selGoal.value;
+  const curDim = selDim.value;
+
+  if(!state.goals.length){
+    selGoal.innerHTML = `<option value="">（暂无目标）</option>`;
+  } else {
+    selGoal.innerHTML = `<option value="">（不关联）</option>` +
+      state.goals.map(g => `<option value="${g.id}">${esc(g.title)}</option>`).join('');
+  }
+  if(curGoal && state.goals.some(g => g.id === curGoal)) selGoal.value = curGoal;
+
+  if(!selDim.dataset.ready) {
+    selDim.innerHTML = DIMS.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+    selDim.dataset.ready = '1';
+  }
+  if(curDim) selDim.value = curDim;
+
+  selGoal.onchange = () => {
+    const g = state.goals.find(x => x.id === selGoal.value);
+    if(g){
+      const inp = document.getElementById('planText');
+      if(!inp.value.trim()) inp.value = g.title;
+    }
+  };
+}
+
+function renderWeek(){
+  fillPlanSelectors();
+  const off = state.weekOffset || 0;
+  const wk = weekKey(off);
+  const start = parseD(wk);
+  const end = new Date(start); end.setDate(end.getDate() + 6);
+  document.getElementById('weekRange').textContent =
+    `${start.getFullYear()}.${pad(start.getMonth()+1)}.${pad(start.getDate())} — ${pad(end.getMonth()+1)}.${pad(end.getDate())}`
+    + (off === 0 ? '（本周）' : (off === -1 ? '（上周）' : (off === 1 ? '（下周）' : '')));
+
+  const plan = state.weekPlans[wk] || [];
+  const listBox = document.getElementById('planList');
+  document.getElementById('planCnt').textContent = plan.length ? `已完成 ${plan.filter(p=>p.done>=p.total).length}/${plan.length}` : '';
+
+  if(!plan.length){
+    listBox.innerHTML = `<div class="empty">这一周还没写计划<br><br>先选择关联目标、学习维度并填写任务，然后添加到本周清单。</div>`;
+  }else{
+    listBox.innerHTML = plan.map(p => {
+      const g = state.goals.find(x => x.id === p.goalId);
+      const dim = getDim(p.dim || 'other');
+      
+      let reviewHtml = '';
+      if(p.reviews && p.reviews.length) {
+        const doneCount = p.reviews.filter(r => r.done).length;
+        reviewHtml = `<span style="color:var(--blue);">复习: ${doneCount}/${p.reviews.length}</span>`;
+      }
+
+      const pct = p.total > 0 ? Math.min(100, Math.round((p.done||0)/p.total*100)) : 0;
+      const isDone = (p.done||0) >= p.total;
+
+      return `
+        <div class="plan-item ${isDone?'done':''}" data-pid="${p.id}">
+          <input type="checkbox" ${isDone?'checked':''} data-toggle="${p.id}" title="勾选完成任务，自动生成复习" />
+          <div class="ptext">
+            <div>${esc(p.text)}</div>
+            <div class="link">
+              <span class="badge" style="background:${dim.color}; font-size:10.5px;">${esc(dim.name)}</span>
+              ${g ? `<span>目标：${esc(g.title)}</span>` : `<span style="color:#b3aa9c;">无关联目标</span>`}
+              <span class="plan-progress">进度: ${p.done||0}/${p.total} ${p.unit||''} (${pct}%)</span>
+              ${p.timeCost ? `<span class="plan-time">用时: ${p.timeCost}分</span>` : ''}
+              ${reviewHtml}
+            </div>
+          </div>
+          <div class="ops">
+            <button class="btn tiny" data-edit-plan="${p.id}">编辑</button>
+            <button class="btn tiny danger" data-del-plan="${p.id}">删除</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+/* =========================================================
+   渲染：今日打卡
+   ========================================================= */
+function fillLogPlanSelect(){
+  const sel = document.getElementById('logPlan');
+  const wk = weekKey(0);
+  const plans = state.weekPlans[wk] || [];
+  const cur = sel.value;
+  
+  if(!plans.length){
+    sel.innerHTML = `<option value="">（本周清单为空，请先去添加）</option>`;
+    return;
+  }
+  sel.innerHTML = `<option value="">-- 请选择具体清单 --</option>` + 
+    plans.map(p => {
+      return `<option value="${p.id}">${esc(p.text)}</option>`;
+    }).join('');
+  if(cur && plans.some(p => p.id === cur)) sel.value = cur;
+
+  sel.onchange = (e) => {
+    const pObj = planObjOf(e.target.value);
+    if(pObj) {
+      document.getElementById('logUnit').value = pObj.unit || '';
+    }
+  };
+}
+
+function renderChecksDropdown(){
+  const wrap = document.getElementById('logChecks');
+  const menu = wrap.querySelector('.ms-menu');
+  const trigger = wrap.querySelector('.ms-trigger');
+  
+  if(!menu.dataset.ready){
+    menu.innerHTML = DAILY_CHECKS.map(c => `
+      <label class="ms-item">
+        <input type="checkbox" value="${c.id}" />
+        <div>${c.text}<span class="eg">${c.eg}</span></div>
+      </label>
+    `).join('');
+    menu.dataset.ready = '1';
+  }
+
+  if(!wrap.dataset.init){
+    const d = menu.querySelector(`input[value="deep30"]`);
+    if(d) d.checked = true;
+    wrap.dataset.init = '1';
+    updateTrigger();
+  }
+
+  function updateTrigger(){
+    const checked = [...menu.querySelectorAll('input:checked')].map(x => {
+      const c = DAILY_CHECKS.find(y => y.id === x.value);
+      return c ? c.text : '';
+    }).filter(Boolean);
+    trigger.textContent = checked.length ? checked.join('、') : '点击选择今日完成的训练';
+  }
+
+  trigger.onclick = (e) => {
+    e.stopPropagation();
+    menu.classList.toggle('show');
+  };
+  
+  menu.onchange = updateTrigger;
+  
+  document.addEventListener('click', (e) => {
+    if(!wrap.contains(e.target)) menu.classList.remove('show');
+  });
+}
+
+function renderTodayLogs(){
+  const box = document.getElementById('todayLogs');
+  const today = todayStr();
+  const logs = state.logs.filter(l => l.date === today);
+  
+  document.getElementById('todayCnt').textContent = logs.length ? `今天已打卡 ${logs.length} 次` : '今天还没打卡';
+
+  if(!logs.length){
+    box.innerHTML = `<div class="empty">今天还没有打卡记录，学完一段就来记一笔 ✍️</div>`;
+    return;
+  }
+
+  // 按目标 ID 分组
+  const groups = {};
+  logs.forEach(l => {
+    const gid = l.goalId || 'unknown';
+    if(!groups[gid]) groups[gid] = [];
+    groups[gid].push(l);
+  });
+
+  let html = '';
+  for(const gid in groups) {
+    const gLogs = groups[gid].sort((a,b) => (b.ts||0) - (a.ts||0));
+    const gTitle = gid === 'unknown' ? '未关联目标' : goalTitle(gid);
+    
+    let isOpen = gLogs.length > 0; 
+
+    html += `
+      <div class="log-group ${isOpen ? 'open' : ''}" data-gid="${gid}">
+        <div class="log-group-head" onclick="toggleLogGroup(this)">
+          <span>🎯 ${esc(gTitle)} <span style="font-size:12px; font-weight:normal; color:var(--muted);">(${gLogs.length} 条记录)</span></span>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="log-group-body">
+          ${gLogs.map(l => {
+            const p = planObjOf(l.planId);
+            const planName = p ? p.text : '（清单已删除）';
+            const tagHtml = (l.checks||[]).map(id => {
+              const c = DAILY_CHECKS.find(x => x.id === id);
+              return c ? `<span>✓ ${c.text}</span>` : '';
+            }).join('');
+
+            return `
+              <div class="logitem">
+                <div class="dot" style="background:var(--accent)"></div>
+                <div class="body">
+                  <div class="t">
+                    <span style="color:var(--blue);">[清单]</span> ${esc(planName)}
+                    <span class="time">🕐 ${fmtTime(l.ts)}</span>
+                  </div>
+                  <div class="m"><span>今日进展:</span> ${esc(l.progress)}</div>
+                  ${l.recall ? `<div class="m"><span>主动回顾:</span> ${esc(l.recall)}</div>` : ''}
+                  ${l.summary ? `<div class="m"><span>输出总结:</span> ${esc(l.summary)}</div>` : ''}
+                  <div class="m" style="color:var(--muted); margin-top:6px;">
+                    完成 ${l.amount} ${l.unit||''}${l.minutes ? ` · 用时 ${l.minutes} 分钟` : ''}
+                  </div>
+                  ${tagHtml ? `<div class="tagline">${tagHtml}</div>` : ''}
+                </div>
+                <div class="ops">
+                  <button class="btn tiny" onclick="openLogModal(null, '${l.id}')">编辑</button>
+                  <button class="btn tiny danger" onclick="deleteLog('${l.id}')">删除</button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+  box.innerHTML = html;
+}
+
+function renderToday(){
+  fillLogPlanSelect();
+  renderChecksDropdown();
+  renderTodayLogs();
+}
+
+window.toggleLogGroup = function(el) {
+  const group = el.closest('.log-group');
+  group.classList.toggle('open');
+};
+
+window.deleteLog = function(id) {
+  if(!confirm('删除这条打卡记录？')) return;
+  const log = state.logs.find(l => l.id === id);
+  if(!log) return;
+
+  const p = planObjOf(log.planId);
+  if(p) {
+    p.done = Math.max(0, (Number(p.done)||0) - (Number(log.amount)||0));
+    p.timeCost = Math.max(0, (Number(p.timeCost)||0) - (Number(log.minutes)||0));
+  }
+
+  state.logs = state.logs.filter(l => l.id !== id);
+  save(); renderAll();
+  toast('已删除');
+};
+
+/* =========================================================
+   渲染：抗遗忘回顾
+   ========================================================= */
+function renderReviews(){
+  const t = todayStr();
+  const valid = getAllReviews().filter(r => r.due <= t); 
+  const overdue  = valid.filter(r => r.due < t).sort((a,b) => a.due.localeCompare(b.due));
+  const dueToday = valid.filter(r => r.due === t);
+  
+  const box = document.getElementById('reviewBox');
+
+  if(!valid.length){
+    box.innerHTML = `<div class="card"><div class="empty">当前没有需要复习的内容 👍<br><br>当你的本周清单勾选完成后，系统会自动生成 1/3/7/30 天的抗遗忘复习。到达指定日期后，会在这里提醒你进行复述。</div></div>`;
+    return;
+  }
+
+  function itemHtml(r, cls){
+    const left = daysBetween(t, r.due);
+    const stageCls = r.stage >= 7 ? 'hot' : '';
+    let dueTxt = r.due;
+    if(left < 0) dueTxt += `（逾期 ${-left} 天）`;
+    else if(left === 0) dueTxt = '今天';
+    
+    const g = state.goals.find(x => x.id === r.goalId);
+    const goalHint = g ? `<span style="font-size:11px;color:var(--muted);">[${esc(g.title)}]</span>` : '';
+
+    return `
+      <div class="rev ${cls}">
+        <div style="flex:1;min-width:200px;">
+          <div class="txt">
+            ${esc(r.planText)} ${goalHint}
+            <span class="stage ${stageCls}">第 ${r.stage} 天复习</span>
+          </div>
+          <div class="sub2">${dueTxt} · 到期日 ${esc(r.due)}</div>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn tiny primary" data-rev-done="${r.wk}|${r.planId}|${r.idx}">复述完成 ✓</button>
+          <button class="btn tiny" data-rev-edit="${r.wk}|${r.planId}|${r.idx}">改期</button>
+          <button class="btn tiny danger" data-rev-del="${r.wk}|${r.planId}|${r.idx}">删除</button>
+        </div>
+      </div>
+    `;
+  }
+
+  let html = '';
+  if(dueToday.length){
+    html += `<div class="rev-group"><h3>🔥 今天该复习（${dueToday.length} 项）</h3>${dueToday.map(r => itemHtml(r,'today')).join('')}</div>`;
+  }
+  if(overdue.length){
+    html += `<div class="rev-group"><h3>⚠️ 已逾期，尽快补上（${overdue.length} 项）</h3>${overdue.map(r => itemHtml(r,'over')).join('')}</div>`;
+  }
+  box.innerHTML = html;
+}
+
+/* =========================================================
+   渲染：看板
+   ========================================================= */
+let boardView = 'day'; 
+
+function renderBoard() {
+  const boardContent = document.getElementById('boardContent');
+  const today = todayStr();
+  
+  if (boardView === 'day') {
+    const logs = state.logs.filter(l => l.date === today).sort((a,b) => (b.ts||0) - (a.ts||0));
+    const totalMin = logs.reduce((s,l) => s + (Number(l.minutes)||0), 0);
+    
+    const hours = new Array(24).fill(0);
+    logs.forEach(l => {
+      const h = new Date(l.ts).getHours();
+      hours[h] += Number(l.amount) || 0;
+    });
+    
+    let chartHtml = '';
+    for(let i=0; i<24; i+=2) {
+      const val = hours[i] + (hours[i+1]||0); 
+      const max = Math.max(...hours, 1);
+      chartHtml += `
+        <div class="chart-col" style="flex:0 0 32px;">
+          <div class="chart-val">${val>0?val:''}</div>
+          <div class="chart-bar-wrap"><div class="chart-bar" style="height:${val/max*100}%"></div></div>
+          <div class="chart-label">${i}时</div>
+        </div>
+      `;
+    }
+
+    boardContent.innerHTML = `
+      <div class="card">
+        <h2>📊 今日数据概览</h2>
+        <div class="summary-stat">
+          <div>今日打卡 <b>${logs.length}</b> 次</div>
+          <div>总投入 <b>${totalMin}</b> 分钟</div>
+        </div>
+        <div class="chart-container" style="height:120px;">${chartHtml}</div>
+        <h2 style="margin-top:20px;">📋 今日详细记录</h2>
+        ${logs.length ? logs.map(l => `
+          <div class="logitem">
+            <div class="dot" style="background:var(--accent)"></div>
+            <div class="body">
+              <div class="t"><span style="color:var(--blue);">[清单]</span> ${esc(planTextOf(l.planId))}<span class="time">🕐 ${fmtTime(l.ts)}</span></div>
+              <div class="m"><span>今日进展:</span> ${esc(l.progress)}</div>
+              <div class="m" style="color:var(--muted); margin-top:4px;">完成 ${l.amount} ${l.unit||''}${l.minutes?` · ${l.minutes} 分钟`:''}</div>
+            </div>
+          </div>
+        `).join('') : '<div class="empty">今日暂无记录</div>'}
+      </div>
+    `;
+  } 
+  else if (boardView === 'week') {
+    const wk = weekKey(0);
+    const logs = state.logs.filter(l => l.date >= wk && l.date <= addDays(wk,6));
+    const totalMin = logs.reduce((s,l) => s + (Number(l.minutes)||0), 0);
+    
+    let chartHtml = '';
+    const weekDays = ['一','二','三','四','五','六','日'];
+    const max = Math.max(...weekDays.map((_,i) => {
+      const d = addDays(wk, i);
+      return state.logs.filter(l => l.date === d).length;
+    }), 1);
+    
+    weekDays.forEach((day, i) => {
+      const d = addDays(wk, i);
+      const count = state.logs.filter(l => l.date === d).length;
+      chartHtml += `
+        <div class="chart-col">
+          <div class="chart-val">${count>0?count:''}</div>
+          <div class="chart-bar-wrap"><div class="chart-bar" style="height:${count/max*100}%"></div></div>
+          <div class="chart-label">周${day}<br><span style="font-size:9px">${d.slice(5)}</span></div>
+        </div>
+      `;
+    });
+
+    boardContent.innerHTML = `
+      <div class="card">
+        <h2>📊 本周数据概览</h2>
+        <div class="summary-stat">
+          <div>本周打卡 <b>${logs.length}</b> 次</div>
+          <div>总投入 <b>${totalMin}</b> 分钟</div>
+        </div>
+        <div class="chart-container" style="height:160px;">${chartHtml}</div>
+      </div>
+    `;
+  }
+  else if (boardView === 'month') {
+    const m = today.slice(0,7);
+    const logs = state.logs.filter(l => l.date.startsWith(m));
+    const totalMin = logs.reduce((s,l) => s + (Number(l.minutes)||0), 0);
+    
+    const daysInMonth = new Date(parseInt(m.slice(0,4)), parseInt(m.slice(5,7)), 0).getDate();
+    let chartHtml = '';
+    let max = 1;
+    const counts = [];
+    for(let i=1; i<=daysInMonth; i++) {
+      const d = `${m}-${pad(i)}`;
+      const c = state.logs.filter(l => l.date === d).length;
+      counts.push(c);
+      if(c > max) max = c;
+    }
+    
+    for(let i=0; i<daysInMonth; i++) {
+      chartHtml += `
+        <div class="chart-col" style="min-width:18px;">
+          <div class="chart-val" style="font-size:9px;">${counts[i]>0?counts[i]:''}</div>
+          <div class="chart-bar-wrap"><div class="chart-bar" style="height:${counts[i]/max*100}%"></div></div>
+          <div class="chart-label" style="font-size:9px;">${i+1}</div>
+        </div>
+      `;
+    }
+
+    boardContent.innerHTML = `
+      <div class="card">
+        <h2>📊 本月数据概览</h2>
+        <div class="summary-stat">
+          <div>本月打卡 <b>${logs.length}</b> 次</div>
+          <div>总投入 <b>${totalMin}</b> 分钟</div>
+        </div>
+        <div class="chart-container" style="height:160px;">${chartHtml}</div>
+      </div>
+    `;
+  }
+  else if (boardView === 'year') {
+    const y = today.slice(0,4);
+    const logs = state.logs.filter(l => l.date.startsWith(y));
+    const totalMin = logs.reduce((s,l) => s + (Number(l.minutes)||0), 0);
+    
+    let chartHtml = '';
+    let max = 1;
+    const counts = [];
+    for(let i=1; i<=12; i++) {
+      const mm = pad(i);
+      const c = state.logs.filter(l => l.date.startsWith(`${y}-${mm}`)).length;
+      counts.push(c);
+      if(c > max) max = c;
+    }
+    
+    for(let i=0; i<12; i++) {
+      chartHtml += `
+        <div class="chart-col">
+          <div class="chart-val">${counts[i]>0?counts[i]:''}</div>
+          <div class="chart-bar-wrap"><div class="chart-bar" style="height:${counts[i]/max*100}%"></div></div>
+          <div class="chart-label">${i+1}月</div>
+        </div>
+      `;
+    }
+
+    boardContent.innerHTML = `
+      <div class="card">
+        <h2>📊 本年数据概览</h2>
+        <div class="summary-stat">
+          <div>本年打卡 <b>${logs.length}</b> 次</div>
+          <div>总投入 <b>${totalMin}</b> 分钟</div>
+        </div>
+        <div class="chart-container" style="height:160px;">${chartHtml}</div>
+      </div>
+    `;
+  }
+}
+
+document.getElementById('boardSubTabs').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-view]');
+  if(!btn) return;
+  document.querySelectorAll('#boardSubTabs button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  boardView = btn.dataset.view;
+  renderBoard();
+});
+
+/* =========================================================
+   渲染：总结页
+   ========================================================= */
+function renderWeekSummary() {
+  const wk = weekKey(0);
+  const start = parseD(wk);
+  const end = new Date(start); end.setDate(end.getDate() + 6);
+  const wkEnd = fmt(end);
+  const logs = state.logs.filter(l => l.date >= wk && l.date <= wkEnd);
+  const totalMin = logs.reduce((s,l) => s + (Number(l.minutes)||0), 0);
+  const days = new Set(logs.map(l => l.date)).size;
+
+  document.getElementById('weekSummaryTitle').textContent = `📝 本周总结（${wk.slice(5)} — ${wkEnd.slice(5)}）`;
+  document.getElementById('weekSummaryStats').innerHTML = `
+    <div>打卡天数 <b>${days}</b> 天</div>
+    <div>总打卡数 <b>${logs.length}</b> 次</div>
+    <div>累计投入 <b>${totalMin}</b> 分钟</div>
+  `;
+  
+  let chartHtml = '';
+  const weekDays = ['一','二','三','四','五','六','日'];
+  const max = Math.max(...weekDays.map((_,i) => {
+    const d = addDays(wk, i);
+    return state.logs.filter(l => l.date === d).length;
+  }), 1);
+  
+  weekDays.forEach((day, i) => {
+    const d = addDays(wk, i);
+    const count = state.logs.filter(l => l.date === d).length;
+    chartHtml += `
+      <div class="chart-col">
+        <div class="chart-val">${count>0?count:''}</div>
+        <div class="chart-bar-wrap"><div class="chart-bar" style="height:${count/max*100}%"></div></div>
+        <div class="chart-label">周${day}<br><span style="font-size:9px">${d.slice(5)}</span></div>
+      </div>
+    `;
+  });
+  document.getElementById('weekSummaryChart').innerHTML = chartHtml;
+  document.getElementById('weekSummaryText').value = state.weekSummaries[wk] || '';
+}
+
+function renderMonth(){
+  const m = todayStr().slice(0,7);
+  const logs = state.logs.filter(l => l.date.startsWith(m));
+  const days = new Set(logs.map(l => l.date)).size;
+  const totalMin = logs.reduce((s,l) => s + (Number(l.minutes)||0), 0);
+
+  document.getElementById('monthTitle').textContent = `📆 ${m.replace('-','年')}月 总结`;
+  document.getElementById('monthStats').innerHTML = `
+    <div>打卡天数 <b>${days}</b> 天</div>
+    <div>总打卡数 <b>${logs.length}</b> 次</div>
+    <div>累计投入 <b>${totalMin}</b> 分钟</div>
+  `;
+  
+  const daysInMonth = new Date(parseInt(m.slice(0,4)), parseInt(m.slice(5,7)), 0).getDate();
+  let chartHtml = '';
+  let max = 1;
+  const counts = [];
+  for(let i=1; i<=daysInMonth; i++) {
+    const d = `${m}-${pad(i)}`;
+    const c = state.logs.filter(l => l.date === d).length;
+    counts.push(c);
+    if(c > max) max = c;
+  }
+  
+  for(let i=0; i<daysInMonth; i++) {
+    chartHtml += `
+      <div class="chart-col" style="min-width:18px;">
+        <div class="chart-val" style="font-size:9px;">${counts[i]>0?counts[i]:''}</div>
+        <div class="chart-bar-wrap"><div class="chart-bar" style="height:${counts[i]/max*100}%"></div></div>
+        <div class="chart-label" style="font-size:9px;">${i+1}</div>
+      </div>
+    `;
+  }
+  document.getElementById('monthChart').innerHTML = chartHtml;
+  document.getElementById('monthSummaryText').value = state.monthSummaries[m] || '';
+}
+
+function renderYear(){
+  const y = todayStr().slice(0,4);
+  const logs = state.logs.filter(l => l.date.startsWith(y));
+  const totalMin = logs.reduce((s,l) => s + (Number(l.minutes)||0), 0);
+  const days = new Set(logs.map(l => l.date)).size;
+
+  document.getElementById('yearTitle').textContent = `📈 ${y}年 总结`;
+  document.getElementById('yearStats').innerHTML = `
+    <div>打卡天数 <b>${days}</b> 天</div>
+    <div>总打卡数 <b>${logs.length}</b> 次</div>
+    <div>累计投入 <b>${totalMin}</b> 分钟</div>
+  `;
+
+  const monthCounts = [];
+  for(let i=1; i<=12; i++){
+    const mm = pad(i);
+    const count = state.logs.filter(l => l.date.startsWith(`${y}-${mm}`)).length;
+    monthCounts.push({ label: `${i}月`, count });
+  }
+  const maxM = Math.max(...monthCounts.map(d => d.count), 1);
+  document.getElementById('yearChart').innerHTML = monthCounts.map(d => `
+    <div class="chart-col">
+      <div class="chart-val">${d.count}</div>
+      <div class="chart-bar-wrap"><div class="chart-bar" style="height:${d.count/maxM*100}%"></div></div>
+      <div class="chart-label">${d.label}</div>
+    </div>
+  `).join('');
+  document.getElementById('yearSummaryText').value = state.yearSummaries[y] || '';
+}
+
+/* =========================================================
+   渲染：记忆方法
+   ========================================================= */
+function renderMethods(){
+  const box = document.getElementById('methodGrid');
+  if(box.dataset.ready) return;
+  box.innerHTML = METHOD_DETAIL.map((m,i) => `
+    <div class="mcard">
+      <div class="h"><span class="ico">${m.icon}</span> ${i+1}. ${m.name}</div>
+      <div class="k">${m.key}</div>
+      <ul>${m.list.map(x => `<li>${x}</li>`).join('')}</ul>
+      <div class="foot">💡 ${m.foot}</div>
+    </div>
+  `).join('');
+  box.dataset.ready = '1';
+}
+
+/* =========================================================
+   总渲染
+   ========================================================= */
+function renderAll(){
+  renderGoals();
+  renderToday();
+  renderWeek();
+  renderReviews();
+  renderWeekSummary();
+  renderMonth();
+  renderYear();
+  renderBoard();
+  renderMethods();
+}
+
+/* =========================================================
+   Tab 切换
+   ========================================================= */
+function switchTab(name){
+  document.querySelectorAll('.nav-item').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => {
+    p.classList.toggle('active', p.id === 'tab-' + name);
+  });
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+/* =========================================================
+   弹窗基础
+   ========================================================= */
+const mask = document.getElementById('mask');
+const modalBox = document.getElementById('modalBox');
+function closeModal(){ mask.classList.remove('show'); modalBox.innerHTML = ''; }
+mask.addEventListener('click', e => { if(e.target === mask) closeModal(); });
+
+/* =========================================================
+   弹窗：目标
+   ========================================================= */
+window.openGoalModal = function(id){
+  const g = id ? state.goals.find(x => x.id === id) : null;
+  modalBox.innerHTML = `
+    <h3>${g ? '编辑学习目标' : '新增学习目标'}</h3>
+    <div class="field">
+      <label>目标名称</label>
+      <input type="text" id="f_title" value="${esc(g ? g.title : '')}" placeholder="例：学习完 IL-FFM 单板原理图设计" />
+    </div>
+    <div class="field">
+      <label>为达成目标，我会遇到哪些障碍或困难？</label>
+      <textarea id="f_obstacle" placeholder="例：资料太多，没有重点；时间碎片化严重；容易忘记之前看过的内容……">${esc(g && g.obstacle ? g.obstacle : '')}</textarea>
+    </div>
+    <div class="field">
+      <label>遇到这些障碍或困难，我该采用何种方式来应对解决？</label>
+      <textarea id="f_solution" placeholder="例：先看目录和总结；每天固定 30 分钟番茄钟；利用本平台的抗遗忘回顾功能……">${esc(g && g.solution ? g.solution : '')}</textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal()">取消</button>
+      <button class="btn primary" id="mSave">保存</button>
+    </div>
+  `;
+  mask.classList.add('show');
+  setTimeout(() => document.getElementById('f_title').focus(), 80);
+
+  document.getElementById('mSave').onclick = () => {
+    const title = document.getElementById('f_title').value.trim();
+    if(!title){ toast('请填写目标名称'); return; }
+    const obstacle = document.getElementById('f_obstacle').value.trim();
+    const solution = document.getElementById('f_solution').value.trim();
+
+    if(g){
+      Object.assign(g, {title, obstacle, solution});
+    }else{
+      state.goals.push({
+        id: uid(), title, obstacle, solution, createdAt: todayStr()
+      });
+    }
+    save(); closeModal(); renderAll();
+    toast(g ? '目标已更新' : '目标已创建 🎯');
+  };
+};
+
+/* =========================================================
+   弹窗：周计划
+   ========================================================= */
+window.openPlanModal = function(pid){
+  const wk = weekKey(state.weekOffset || 0);
+  const plan = state.weekPlans[wk] || [];
+  const p = pid ? plan.find(x => x.id === pid) : null;
+  if(pid && !p) return;
+
+  const gid = p ? (p.goalId || '') : '';
+  const dimId = p ? (p.dim || 'sch') : 'sch';
+  const text = p ? p.text : '';
+  const total = p ? (p.total || 1) : 1;
+  const unit = p ? (p.unit || '') : '';
+
+  modalBox.innerHTML = `
+    <h3>${p ? '编辑本周清单' : '添加本周清单'}</h3>
+    <div class="row">
+      <div class="field">
+        <label>关联学习目标</label>
+        <select id="pm_goal">
+          <option value="">（不关联）</option>
+          ${state.goals.map(g => `<option value="${g.id}" ${g.id===gid?'selected':''}>${esc(g.title)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <label>学习维度</label>
+        <select id="pm_dim">
+          ${DIMS.map(d => `<option value="${d.id}" ${d.id===dimId?'selected':''}>${d.name}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>本周要学什么（具体任务）</label>
+        <input type="text" id="pm_text" value="${esc(text)}" placeholder="例：看完 IL-FFM 子系统设计说明书 第 3 章" />
+      </div>
+      <div class="field">
+        <label>占比</label>
+        <input type="number" id="pm_total" min="1" value="${total}" />
+      </div>
+    </div>
+    <div class="field">
+      <label>单位</label>
+      <input type="text" id="pm_unit" value="${esc(unit)}" placeholder="可不填" />
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal()">取消</button>
+      <button class="btn primary" id="pm_save">保存</button>
+    </div>
+  `;
+  mask.classList.add('show');
+
+  const sel = document.getElementById('pm_goal');
+  sel.onchange = () => {
+    const g = state.goals.find(x => x.id === sel.value);
+    const inp = document.getElementById('pm_text');
+    if(g && (!inp.value.trim() || inp.value === g.title)) inp.value = g.title;
+  };
+
+  document.getElementById('pm_save').onclick = () => {
+    const gidNew = document.getElementById('pm_goal').value;
+    const dimNew = document.getElementById('pm_dim').value;
+    const textNew = document.getElementById('pm_text').value.trim();
+    const totalNew = Math.max(1, parseFloat(document.getElementById('pm_total').value) || 1);
+    const unitNew = document.getElementById('pm_unit').value.trim();
+    
+    if(!textNew){ toast('请填写要学的内容'); return; }
+
+    if(p){
+      p.goalId = gidNew;
+      p.dim = dimNew;
+      p.text = textNew;
+      p.total = totalNew;
+      p.unit = unitNew;
+      toast('清单已更新');
+    }else{
+      state.weekPlans[wk].push({
+        id: uid(), goalId: gidNew, dim: dimNew, text: textNew, total: totalNew, unit: unitNew, done: 0, timeCost: 0, reviews: []
+      });
+      toast('已加入本周计划 📅');
+    }
+    save(); closeModal(); renderAll();
+  };
+};
+
+/* =========================================================
+   弹窗：今日打卡（仅用于编辑历史记录）
+   ========================================================= */
+window.openLogModal = function(goalId, logId){
+  const editing = !!logId;
+  const log = editing ? state.logs.find(l => l.id === logId) : null;
+  if(editing && !log) return;
+
+  const wk = weekKey(0);
+  const plans = state.weekPlans[wk] || [];
+  
+  const currentPlanId = log ? log.planId : '';
+  const currentProgress = log ? log.progress : '';
+  const currentRecall = log ? log.recall : '';
+  const currentSummary = log ? log.summary : '';
+  const checks = log ? (log.checks || []) : ['deep30'];
+  const amount = log ? log.amount : 1;
+  const unit = log ? (log.unit || '') : '';
+  const minutes = log ? log.minutes : 30;
+
+  modalBox.innerHTML = `
+    <h3>${editing ? '编辑打卡记录' : '记录学习进度'}</h3>
+    
+    <div class="field">
+      <label>关联本周清单 <span class="req">*</span></label>
+      <select id="lm_plan">
+        <option value="">-- 请选择具体清单 --</option>
+        ${plans.map(p => `<option value="${p.id}" ${p.id===currentPlanId?'selected':''}>${esc(p.text)}</option>`).join('')}
+      </select>
+    </div>
+
+    <div class="field">
+      <label>记忆力训练方法</label>
+      <div class="chips" id="lm_checks" style="display:flex;flex-wrap:wrap;gap:8px;">
+        ${DAILY_CHECKS.map(c => `<div class="mchip ${checks.includes(c.id)?'on':''}" data-c="${c.id}" style="padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:#fdfcfa;font-size:12.5px;cursor:pointer;color:var(--muted);">${c.text}</div>`).join('')}
+      </div>
+    </div>
+
+    <div class="field">
+      <label>今日进展（必填）<span class="req">*</span></label>
+      <input type="text" id="lm_progress" value="${esc(currentProgress)}" placeholder="例：看完了第3章的电源树设计部分" />
+    </div>
+
+    <div class="field">
+      <label>主动回顾（选填）</label>
+      <textarea id="lm_recall" placeholder="合上资料，你能回忆起什么？">${esc(currentRecall)}</textarea>
+    </div>
+
+    <div class="field">
+      <label>输出总结（选填）</label>
+      <textarea id="lm_summary" placeholder="写下你的总结或备忘……">${esc(currentSummary)}</textarea>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>本次完成进度 <span class="req">*</span></label>
+        <div style="display:flex; gap:8px;">
+          <input type="number" id="lm_amount" min="0.1" step="1" value="${amount}" style="flex:1;" />
+          <input type="text" id="lm_unit" value="${esc(unit)}" placeholder="可不填" style="width:90px;" />
+        </div>
+      </div>
+      <div class="field">
+        <label>用时（分钟）</label>
+        <input type="number" id="lm_minutes" min="0" value="${minutes}" />
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal()">取消</button>
+      <button class="btn primary" id="lm_save">保存修改</button>
+    </div>
+  `;
+  mask.classList.add('show');
+
+  document.querySelectorAll('#lm_checks .mchip').forEach(c => {
+    if(c.classList.contains('on')) {
+      c.style.background = 'var(--accent)';
+      c.style.color = '#fff';
+    }
+  });
+
+  document.getElementById('lm_checks').addEventListener('click', e => {
+    const c = e.target.closest('.mchip');
+    if(c) {
+      c.classList.toggle('on');
+      c.style.background = c.classList.contains('on') ? 'var(--accent)' : '#fdfcfa';
+      c.style.color = c.classList.contains('on') ? '#fff' : 'var(--muted)';
+    }
+  });
+
+  document.getElementById('lm_save').onclick = () => {
+    const newPlanId = document.getElementById('lm_plan').value;
+    const amt = Math.max(0.1, parseFloat(document.getElementById('lm_amount').value) || 1);
+    const newUnit = document.getElementById('lm_unit').value.trim();
+    const mins = Math.max(0, parseInt(document.getElementById('lm_minutes').value) || 0);
+    const progText = document.getElementById('lm_progress').value.trim();
+    const recallText = document.getElementById('lm_recall').value.trim();
+    const summText = document.getElementById('lm_summary').value.trim();
+    const cks = [...document.querySelectorAll('#lm_checks .mchip.on')].map(x => x.dataset.c);
+
+    if(!newPlanId) { toast('请选择关联的本周清单'); return; }
+    if(!progText) { toast('请填写今日进展（必填）'); return; }
+
+    const pObj = planObjOf(newPlanId);
+    let goalId = pObj ? pObj.goalId : '';
+
+    // 回退旧进度
+    const oldP = planObjOf(log.planId);
+    if(oldP) {
+      oldP.done = Math.max(0, (Number(oldP.done)||0) - (Number(log.amount)||0));
+      oldP.timeCost = Math.max(0, (Number(oldP.timeCost)||0) - (Number(log.minutes)||0));
+    }
+    
+    // 增加新进度
+    if(pObj) {
+      pObj.done = (Number(pObj.done)||0) + amt;
+      pObj.timeCost = (Number(pObj.timeCost)||0) + mins;
+    }
+
+    Object.assign(log, {
+      planId: newPlanId, goalId, amount: amt, unit: newUnit, minutes: mins,
+      progress: progText, recall: recallText, summary: summText, checks: cks
+    });
+    save(); closeModal(); renderAll();
+    toast('记录已更新 ✅');
+  };
+};
+
+/* =========================================================
+   全局事件绑定
+   ========================================================= */
+document.getElementById('btnAddGoal').onclick = () => openGoalModal(null);
+
+document.getElementById('goalList').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act]');
+  if(!btn) return;
+  const card = btn.closest('[data-id]');
+  if(!card) return;
+  const g = state.goals.find(x => x.id === card.dataset.id);
+  if(!g) return;
+
+  if(btn.dataset.act === 'edit') openGoalModal(g.id);
+  if(btn.dataset.act === 'del'){
+    if(confirm(`确定删除目标「${g.title}」吗？\n相关打卡记录和清单也会一起删除。`)){
+      state.goals = state.goals.filter(x => x.id !== g.id);
+      state.logs = state.logs.filter(l => l.goalId !== g.id);
+      Object.keys(state.weekPlans).forEach(wk => {
+        state.weekPlans[wk] = state.weekPlans[wk].filter(p => p.goalId !== g.id);
+      });
+      save(); renderAll();
+      toast('已删除');
+    }
+  }
+});
+
+document.getElementById('weekPrev').onclick = () => { state.weekOffset = (state.weekOffset||0) - 1; save(); renderWeek(); };
+document.getElementById('weekNext').onclick = () => { state.weekOffset = (state.weekOffset||0) + 1; save(); renderWeek(); };
+document.getElementById('weekNow').onclick  = () => { state.weekOffset = 0; save(); renderWeek(); };
+
+document.getElementById('btnAddPlan').onclick = () => {
+  const wk = weekKey(state.weekOffset || 0);
+  if(!state.weekPlans[wk]) state.weekPlans[wk] = [];
+  const text = document.getElementById('planText').value.trim();
+  const goalId = document.getElementById('planGoal').value;
+  const dim = document.getElementById('planDim').value;
+  const total = Math.max(1, parseFloat(document.getElementById('planTotal').value) || 1);
+  const unit = document.getElementById('planUnit').value.trim();
+  
+  if(!text){ toast('请填写本周要学的内容'); return; }
+  
+  state.weekPlans[wk].push({id: uid(), goalId, dim, text, total, unit, done: 0, timeCost: 0, reviews: []});
+  document.getElementById('planText').value = '';
+  document.getElementById('planTotal').value = 1;
+  document.getElementById('planUnit').value = '';
+  save(); renderAll();
+  toast('已加入本周计划 📅');
+};
+
+document.getElementById('planList').addEventListener('click', e => {
+  const wk = weekKey(state.weekOffset || 0);
+  const plan = state.weekPlans[wk] || [];
+
+  const tg = e.target.closest('[data-toggle]');
+  if(tg){
+    const it = plan.find(p => p.id === tg.dataset.toggle);
+    if(it){
+      if(tg.checked) {
+        it.done = it.total; 
+        if(!it.reviews || !it.reviews.length) {
+          it.reviews = REVIEW_STAGES.map(st => ({
+            stage: st, due: addDays(todayStr(), st), done: false
+          }));
+        }
+      } else {
+        it.done = 0;
+        it.reviews = [];
+      }
+      save(); renderAll();
+    }
+    return;
+  }
+  
+  const edit = e.target.closest('[data-edit-plan]');
+  if(edit){ openPlanModal(edit.dataset.editPlan); return; }
+
+  const del = e.target.closest('[data-del-plan]');
+  if(del){
+    if(confirm('删除这条本周清单？')){
+      state.weekPlans[wk] = plan.filter(p => p.id !== del.dataset.delPlan);
+      save(); renderAll();
+      toast('已删除');
+    }
+  }
+});
+
+document.getElementById('btnLog').onclick = () => {
+  const planId = document.getElementById('logPlan').value;
+  if(!planId) { toast('请选择关联的本周清单'); return; }
+
+  const pObj = planObjOf(planId);
+  if(!pObj) { toast('清单不存在'); return; }
+  const goalId = pObj.goalId;
+
+  const amount = Math.max(0.1, parseFloat(document.getElementById('logAmount').value) || 1);
+  const unit = document.getElementById('logUnit').value.trim();
+  const minutes = Math.max(0, parseInt(document.getElementById('logMinutes').value) || 0);
+  const progText = document.getElementById('logProgress').value.trim();
+  const recallText = document.getElementById('logRecall').value.trim();
+  const summText = document.getElementById('logSummary').value.trim();
+  const checks = [...document.querySelectorAll('#logChecks .ms-menu input:checked')].map(x => x.value);
+
+  if(!progText) { toast('请填写今日进展（必填）'); return; }
+
+  pObj.done = (Number(pObj.done)||0) + amount;
+  pObj.timeCost = (Number(pObj.timeCost)||0) + minutes;
+
+  createLog({
+    planId, goalId, amount, unit, minutes, checks,
+    progress: progText, recall: recallText, summary: summText
+  });
+
+  save(); renderAll();
+  toast('打卡成功！🎉');
+
+  document.getElementById('logProgress').value = '';
+  document.getElementById('logRecall').value = '';
+  document.getElementById('logSummary').value = '';
+  document.getElementById('logAmount').value = 1;
+  document.getElementById('logUnit').value = '';
+  document.getElementById('logMinutes').value = 30;
+  document.querySelectorAll('#logChecks .ms-menu input').forEach(x => {
+    x.checked = (x.value === 'deep30');
+  });
+  const evt = new Event('change');
+  document.querySelector('#logChecks .ms-menu').dispatchEvent(evt);
+};
+
+document.getElementById('reviewBox').addEventListener('click', e => {
+  const doneBtn = e.target.closest('[data-rev-done]');
+  const editBtn = e.target.closest('[data-rev-edit]');
+  const delBtn = e.target.closest('[data-rev-del]');
+
+  if(doneBtn) {
+    const [wk, planId, idx] = doneBtn.dataset.revDone.split('|');
+    const plan = state.weekPlans[wk]?.find(p => p.id === planId);
+    if(plan && plan.reviews[idx]) {
+      plan.reviews[idx].done = true;
+      save(); renderAll();
+      toast('复述完成，记忆又加深了一层 🧠');
+    }
+  }
+  
+  if(editBtn) {
+    const [wk, planId, idx] = editBtn.dataset.revEdit.split('|');
+    const plan = state.weekPlans[wk]?.find(p => p.id === planId);
+    if(plan && plan.reviews[idx]) {
+      const newDue = prompt('修改复习日期 (YYYY-MM-DD)', plan.reviews[idx].due);
+      if(newDue) {
+        plan.reviews[idx].due = newDue;
+        save(); renderAll();
+        toast('复习日期已更新');
+      }
+    }
+  }
+
+  if(delBtn) {
+    const [wk, planId, idx] = delBtn.dataset.revDel.split('|');
+    const plan = state.weekPlans[wk]?.find(p => p.id === planId);
+    if(plan && plan.reviews[idx]) {
+      if(confirm('删除这条复习提醒？')) {
+        plan.reviews.splice(idx, 1);
+        save(); renderAll();
+        toast('已删除');
+      }
+    }
+  }
+});
+
+document.getElementById('btnSaveWeekSummary').onclick = () => {
+  const wk = weekKey(0);
+  state.weekSummaries[wk] = document.getElementById('weekSummaryText').value;
+  save(); toast('本周总结已保存 📝');
+};
+
+document.getElementById('btnSaveMonth').onclick = () => {
+  const m = todayStr().slice(0,7);
+  state.monthSummaries[m] = document.getElementById('monthSummaryText').value;
+  save(); toast('月度总结已保存 📆');
+};
+
+document.getElementById('btnSaveYear').onclick = () => {
+  const y = todayStr().slice(0,4);
+  state.yearSummaries[y] = document.getElementById('yearSummaryText').value;
+  save(); toast('年度总结已保存 📈');
+};
+
+document.getElementById('btnExport').onclick = () => {
+  const data = JSON.stringify(state, null, 2);
+  const blob = new Blob([data], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `技能提升备份_${todayStr()}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('已导出备份文件');
+};
+
+document.getElementById('btnImport').onclick = () => document.getElementById('fileInput').click();
+document.getElementById('fileInput').onchange = e => {
+  const f = e.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const s = JSON.parse(reader.result);
+      if(!s || !Array.isArray(s.goals)) throw new Error('格式不对');
+      if(confirm('导入会覆盖当前数据，确定继续吗？')){
+        state = s;
+        state.logs = state.logs || [];
+        state.weekPlans = state.weekPlans || {};
+        state.weekSummaries = state.weekSummaries || {};
+        state.monthSummaries = state.monthSummaries || {};
+        state.yearSummaries = state.yearSummaries || {};
+        state.weekOffset = 0;
+        save(); renderAll();
+        toast('导入成功 ✅');
+      }
+    }catch(err){ toast('导入失败：文件格式不正确'); }
+    e.target.value = '';
+  };
+  reader.readAsText(f);
+};
+
+document.getElementById('btnClear').onclick = () => {
+  if(confirm('⚠️ 确定要清除所有历史数据吗？此操作不可恢复，建议先导出备份。')) {
+    localStorage.removeItem(KEY); location.reload();
+  }
+};
+
+(function init(){
+  const d = new Date();
+  const wd = ['日','一','二','三','四','五','六'][d.getDay()];
+  document.getElementById('todayLabel').textContent =
+    `${d.getFullYear()} 年 ${d.getMonth()+1} 月 ${d.getDate()} 日 · 周${wd}`;
+
+  state = load();
+  save();
+  renderAll();
+})();
+</script>
+</body>
+</html>
